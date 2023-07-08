@@ -1,0 +1,6 @@
+CREATE TABLE users
+( 
+  pk int(11) NOT NULL AUTO_INCREMENT,
+  name VARCHAR(150),
+  PRIMARY KEY (`pk`)
+);

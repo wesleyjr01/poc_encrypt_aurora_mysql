@@ -1,14 +1,52 @@
 
-resource "aws_kms_key" "this" {
-  description              = "KMS key used by Aurora MySQL Cluster"
-  key_usage                = "ENCRYPT_DECRYPT"
-  customer_master_key_spec = "SYMMETRIC_DEFAULT"
-  enable_key_rotation      = false
-  deletion_window_in_days  = 10
+resource "aws_kms_key" "snapshot_encrypt_kms_key" {
+  # This will be created at account 131578276461
+  # Allow access to account 931366402038
+  description             = "KMS Key used to encrypt a MysQL Aurora Cluster snapshot."
+  deletion_window_in_days = 10
+  policy                  = <<EOF
+{
+  "Version": "2012-10-17",
+  "Id": "key-policy",
+  "Statement": [
+    {
+      "Sid": "Allow * to source account",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::131578276461:root"
+      },
+      "Action": [
+        "kms:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Allow Account 931366402038 to use key",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::931366402038:root"
+      },
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_kms_alias" "this" {
+  name          = "alias/snapshot_encrypt_kms_key"
+  target_key_id = aws_kms_key.snapshot_encrypt_kms_key.key_id
 }
 
 
-resource "aws_rds_cluster" "cluster_that_generates_the_snapshot" {
+resource "aws_rds_cluster" "cluster_that_generates_unencrypted_snapshot" {
   cluster_identifier      = var.cluster_identifier
   engine                  = "aurora-mysql"
   engine_version          = var.engine_version
@@ -19,10 +57,13 @@ resource "aws_rds_cluster" "cluster_that_generates_the_snapshot" {
 
   master_username    = "foo1234AF"
   master_password    = "foo1234A!pwd"
-  kms_key_id         = aws_kms_key.this.arn
   port               = 3306
-  storage_encrypted  = true
   availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+  # kms_key_id         = aws_kms_key.snapshot_encrypt_kms_key.arn
+  # storage_encrypted  = true
+
+  
   #   vpc_security_group_ids = ""
   #   db_subnet_group_name = 
   #   db_instance_parameter_group_name = 
