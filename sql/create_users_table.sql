@@ -4,3 +4,11 @@ CREATE TABLE users
   name VARCHAR(150),
   PRIMARY KEY (`pk`)
 );
+
+INSERT INTO users (name)
+VALUES
+	('John'),
+	('Albert');
+
+
+select * from users;
